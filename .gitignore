@@ -1,0 +1,7 @@
+node_modules
+dist
+backend/requests-store.json
+.env
+.env.local
+.env.*.local
+.vercel
