@@ -24,8 +24,53 @@ Create `.env` from `.env.example`.
 ### Frontend
 
 - `VITE_GHOSTPAY_REQUEST_BACKEND`
-  - Optional for local/same-device demos.
-  - Required for public cross-device live updates (merchant/payer on different devices).
+  - Required for request creation and live cross-device sync.
+  - In production on Vercel, if omitted it defaults to `/api/ghostpay`.
+  - In local dev, if omitted it defaults to `http://localhost:4123`.
+- `VITE_GHOSTPAY_REQUIRE_REQUEST_SIGNATURE`
+  - Set to `true` to require browser-wallet signed payment requests.
+  - Set to `false` (default) to allow unsigned requests in the demo flow.
+- `VITE_GHOSTPAY_ADMIN_TOKEN` (optional)
+  - Optional for frontend calls when you also protect backend POST endpoints. If set, frontend sends:
+    - `Authorization: Bearer <token>` and
+    - `X-Admin-Key: <token>` with POST requests to `/requests`.
+  - For public production use, treat this as a lightweight gate only; Vite vars are exposed to browsers.
+
+### Backend (`backend/.env.example`)
+
+- `GHOSTPAY_REQUEST_DB`
+- `GHOSTPAY_ADMIN_TOKEN`
+  - Optional shared secret. If set, POST endpoints require either:
+    - `Authorization: Bearer <token>`
+    - or `X-Admin-Key: <token>`
+- `GHOSTPAY_REQUIRE_REQUEST_SIGNATURE`
+  - Set to `true` to reject unsigned request creations.
+- `GHOSTPAY_CLAIM_LOCK_MS`
+  - Lock window for in-flight payer claims (milliseconds).
+- `GHOSTPAY_CLAIM_LOCK_TTL_MS`
+  - Maximum claim age before it is released automatically.
+- `GHOSTPAY_REQUEST_TTL_MS`
+  - Maximum allowed request validity window (createdAt→expiresAt).
+- `GHOSTPAY_REQUEST_STORE_RETENTION_DAYS`
+  - Retention window for completed/failed/expired requests, in days.
+- `GHOSTPAY_CLEANUP_INTERVAL_MS`
+  - Frequency of automatic prune/normalization cycles.
+- `GHOSTPAY_MAX_REQUESTS_PER_MERCHANT`
+  - Per-merchant request history cap in store.
+- `GHOSTPAY_MAX_BODY_BYTES`
+- `GHOSTPAY_POST_RATE_LIMIT_WINDOW_MS`
+- `GHOSTPAY_POST_RATE_LIMIT_MAX`
+- `GHOSTPAY_GET_RATE_LIMIT_WINDOW_MS`
+- `GHOSTPAY_GET_RATE_LIMIT_MAX`
+
+### Vercel proxy function env vars
+
+- `GHOSTPAY_BACKEND_URL`
+  - Base URL for your private backend that `api/ghostpay/requests` should forward to (for example `https://your-backend-host.example`).
+- `GHOSTPAY_ADMIN_TOKEN`
+  - Optional; if set, proxy injects token into forwarded requests.
+- `GHOSTPAY_REQUEST_TIMEOUT_MS`
+  - Optional timeout for proxy requests in ms (default `10000`).
 
 ## Quick start (local)
 
@@ -56,14 +101,21 @@ VITE_GHOSTPAY_REQUEST_BACKEND=http://localhost:4123
 ```env
 VITE_GHOSTPAY_REQUEST_BACKEND=https://your-backend-host.example
 ```
+3. (Optional) configure Vercel serverless proxy so browser never holds the admin token:
 
-3. Deploy frontend to any static host (Vite output)
+```
+GHOSTPAY_BACKEND_URL=https://your-backend-host.example
+GHOSTPAY_ADMIN_TOKEN=your-shared-token
+```
+
+4. Deploy frontend to any static host (Vite output)
    - `npm run build`
    - upload `dist/`
 
 If you use Vercel:
 
-- Set `VITE_GHOSTPAY_REQUEST_BACKEND` in project environment variables
+- Set `VITE_GHOSTPAY_REQUEST_BACKEND` (optional, defaults to `/api/ghostpay` in production)
+- Set `GHOSTPAY_BACKEND_URL` and `GHOSTPAY_ADMIN_TOKEN` as backend function environment variables
 - Deploy the repo branch and use the generated public URL
 
 ### Current deployment status (March 1, 2026)
